@@ -1,32 +1,30 @@
 # app/database.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
-import os
 from pathlib import Path
-
-# Base do projeto (…/src)
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Garante que a pasta data/ existe (Render permite escrita no /opt/render/project/src)
-DB_DIR = BASE_DIR / "data"
-DB_DIR.mkdir(parents=True, exist_ok=True)
-
-# Caminho absoluto para o ficheiro SQLite
-DB_PATH = DB_DIR / "biblioteca.db"
-DATABASE_URL = f"sqlite:///{DB_PATH}"
-
-# Para SQLite + FastAPI, activa connect_args
-engine = create_engine(
-    DATABASE_URL,
-    echo=False,
-    future=True,
-    connect_args={"check_same_thread": False},
-)
-
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+import os
 
 class Base(DeclarativeBase):
     pass
+
+# Se existir DATABASE_URL no ambiente (ex.: Render), usa-a.
+env_db = os.getenv("DATABASE_URL")
+
+if env_db:
+    DATABASE_URL = env_db
+    # Para SQLite, convém permitir threads
+    connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+else:
+    # Caminho absoluto dentro do projeto
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    DB_DIR = BASE_DIR / "data"
+    DB_DIR.mkdir(parents=True, exist_ok=True)
+    DB_PATH = DB_DIR / "biblioteca.db"
+    DATABASE_URL = f"sqlite:///{DB_PATH}"
+    connect_args = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, echo=False, future=True, connect_args=connect_args)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 def get_db():
     db = SessionLocal()
