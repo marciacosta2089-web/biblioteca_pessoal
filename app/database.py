@@ -1,19 +1,33 @@
 # app/database.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
+import os
+from pathlib import Path
 
-# Caminho do ficheiro SQLite
-DATABASE_URL = "sqlite:///./data/biblioteca.db"
+# Base do projeto (…/src)
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-# echo=True mostra SQL no terminal; podes mudar para False
-engine = create_engine(DATABASE_URL, echo=False, future=True)
+# Garante que a pasta data/ existe (Render permite escrita no /opt/render/project/src)
+DB_DIR = BASE_DIR / "data"
+DB_DIR.mkdir(parents=True, exist_ok=True)
+
+# Caminho absoluto para o ficheiro SQLite
+DB_PATH = DB_DIR / "biblioteca.db"
+DATABASE_URL = f"sqlite:///{DB_PATH}"
+
+# Para SQLite + FastAPI, activa connect_args
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    future=True,
+    connect_args={"check_same_thread": False},
+)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 class Base(DeclarativeBase):
     pass
 
-# Dependency para FastAPI
 def get_db():
     db = SessionLocal()
     try:
